@@ -1,10 +1,11 @@
 import React from 'react';
 import { Text, Circle, Transformer } from 'react-konva';
+import { textTransformerOptions } from '../../config';
 
+// see: https://konvajs.org/docs/sandbox/Editable_Text.html
 function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onChange }) {
     const shapeRef = React.useRef();
     const trRef = React.useRef();
-
     let stage = null;
     let layer = null;
     let textNode = null;
@@ -12,8 +13,9 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
 
     React.useEffect(() => {
         if (isSelected) {
-            // we need to attach transformer manually
+            // 将选择框固定在当前选中图层上
             trRef.current.nodes([shapeRef.current]);
+            // 更新涂层
             trRef.current.getLayer().batchDraw();
         }
     }, [isSelected]);
@@ -68,22 +70,33 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                     layer = layerNode.current;
                     textNode = shapeRef.current;
                     tr = trRef.current;
+
                     textNode.hide();
                     tr.hide();
                     layer.draw();
 
+                    // 用绝对位置在画布上创建文本区域
+                    // 首先我们需要找到文本区域的位置
+                    // 如何找到它？
+                    // 首先，让我们找到文本节点相对于后台文件的位置：
                     let textPosition = textNode.absolutePosition();
 
+                    // 然后让我们在页面上找到后台容器的位置
                     let stageBox = stage.container().getBoundingClientRect();
 
+                    // 所以textarea的位置将是以上位置的总和:
                     let areaPosition = {
                         x: stageBox.left + textPosition.x,
                         y: stageBox.top + textPosition.y,
                     };
 
+                    // 创建 textarea 并设置样式
                     let textarea = document.createElement('textarea');
                     document.body.appendChild(textarea);
 
+                    // 应用多种样式以尽可能接近画布上的文本
+                    // 请记住，画布上的文本呈现和文本区域上的文本呈现可能不同
+                    // 有时很难做到100%相同。但我们会努力。。。
                     textarea.value = textNode.text();
                     textarea.style.position = 'absolute';
                     textarea.style.top = areaPosition.y + 'px';
@@ -106,7 +119,7 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                     let rotation = textNode.rotation();
                     let transform = '';
                     if (rotation) {
-                        transform += 'rotateZ(' + rotation + 'deg)';
+                    transform += 'rotateZ(' + rotation + 'deg)';
                     }
 
                     let px = 0;
@@ -114,7 +127,7 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                     // because it jumps a bit
                     let isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
                     if (isFirefox) {
-                        px += 2 + Math.round(textNode.fontSize() / 20);
+                    px += 2 + Math.round(textNode.fontSize() / 20);
                     }
                     transform += 'translateY(-' + px + 'px)';
 
@@ -132,36 +145,37 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                         window.removeEventListener('click', handleOutsideClick);
                         textNode.show();
                         tr.show();
-                        // tr.forceUpdate();
+                        // see: https://github.com/konvajs/react-konva/issues/336
+                        // tr.forceUpdate(); // 失去焦点不必再显示框
                         layer.draw();
                     }
 
                     function setTextareaWidth(newWidth) {
-                        if (!newWidth) {
-                            // set width for placeholder
-                            newWidth = textNode.placeholder.length * textNode.fontSize();
-                        }
-                        // some extra fixes on different browsers
-                        let isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                        let isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-                        if (isSafari || isFirefox) {
-                            newWidth = Math.ceil(newWidth);
-                        }
+                    if (!newWidth) {
+                        // set width for placeholder
+                        newWidth = textNode.placeholder.length * textNode.fontSize();
+                    }
+                    // some extra fixes on different browsers
+                    let isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                    let isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+                    if (isSafari || isFirefox) {
+                        newWidth = Math.ceil(newWidth);
+                    }
 
-                        let isEdge = document.documentMode || /Edge/.test(navigator.userAgent);
-                        if (isEdge) {
-                            newWidth += 1;
-                        }
-                        textarea.style.width = newWidth + 'px';
+                    let isEdge = document.documentMode || /Edge/.test(navigator.userAgent);
+                    if (isEdge) {
+                        newWidth += 1;
+                    }
+                    textarea.style.width = newWidth + 'px';
                     }
 
                     textarea.addEventListener('keydown', e => {
                         // hide on enter
                         // but don't hide on shift + enter
-                        if (e.keyCode === 13 && !e.shiftKey) {
-                            textNode.text(textarea.value);
-                            removeTextarea();
-                        }
+                        // if (e.keyCode === 13 && !e.shiftKey) {
+                        //     textNode.text(textarea.value);
+                        //     removeTextarea();
+                        // }
                         // on esc do not set value back to node
                         if (e.keyCode === 27) {
                             removeTextarea();
@@ -172,8 +186,7 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                         let scale = textNode.getAbsoluteScale().x;
                         setTextareaWidth(textNode.width() * scale);
                         textarea.style.height = 'auto';
-                        textarea.style.height =
-                            textarea.scrollHeight + textNode.fontSize() + 'px';
+                        textarea.style.height = textarea.scrollHeight + textNode.fontSize() + 'px';
                     });
 
                     function handleOutsideClick(e) {
@@ -190,13 +203,7 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
             {isSelected && (
                 <Transformer
                     ref={trRef}
-                    anchorStroke={'red'}
-                    anchorFill={'yellow'}
-                    anchorSize={14}
-                    borderStroke={'green'}
-                    keepRatio={true} // 保持比例
-                    enabledAnchors={['top-left', 'bottom-left', 'bottom-right']} // 定位点
-                    rotationSnaps={[0, 90, 180, 270]} // 旋转角度吸附
+                    {...textTransformerOptions}
                     boundBoxFunc={(oldBox, newBox) => {
                         // limit resize
                         if (newBox.width < 5 || newBox.height < 5) {

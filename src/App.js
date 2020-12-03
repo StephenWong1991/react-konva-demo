@@ -7,12 +7,13 @@ function generateText() {
         id: i.toString(),
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
-        width: 150,
-        height: 150,
+        // width: 150,
+        // height: 150,
         rotation: Math.random() * 180,
         text: '你好啊',
         fill: 'red',
-        fontSize: 50
+        fontSize: 50,
+        dataType: 'template-text'
     }));
 }
 const INIT_TEXT = generateText();
