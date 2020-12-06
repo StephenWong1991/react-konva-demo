@@ -30,6 +30,7 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
 
                 // see: http://disq.us/p/2c6868x
                 // see: https://stackoverflow.com/questions/63455286/is-it-possible-to-use-an-icon-as-a-rotater-in-react-konva-transformer
+                // https://codesandbox.io/s/react-konva-rotater-customization-isn5l?file=/src/index.js
                 // disaable fill
                 // rot.fill(null);
                 // enable icon
