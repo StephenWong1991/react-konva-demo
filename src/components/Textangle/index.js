@@ -1,22 +1,47 @@
 import React from 'react';
+import Konva from 'konva';
 import { Text, Circle, Transformer } from 'react-konva';
-import { textTransformerOptions } from '../../config';
+import { textTransformerOptions, generateTextarea } from '../../config';
 
+// Editable Text Example
 // see: https://konvajs.org/docs/sandbox/Editable_Text.html
-function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onChange }) {
+function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onChange, deleteItem }) {
     const shapeRef = React.useRef();
     const trRef = React.useRef();
-    let stage = null;
-    let layer = null;
-    let textNode = null;
-    let tr = null;
+    const ciRef = React.useRef();
+
+    const stage = stageNode.current;
+    const layer = layerNode.current;
+    const textNode = shapeRef.current;
 
     React.useEffect(() => {
         if (isSelected) {
+            const tr = trRef.current;
             // 将选择框固定在当前选中图层上
-            trRef.current.nodes([shapeRef.current]);
+            tr.nodes([textNode]);
+
+            // tr.nodes([ciRef.current]);
             // 更新涂层
-            trRef.current.getLayer().batchDraw();
+            tr.getLayer().batchDraw();
+
+            // tr.update = () => {
+                Konva.Transformer.prototype.update.call(tr);
+                let rot = tr.findOne('.rotater');
+
+                // see: http://disq.us/p/2c6868x
+                // see: https://stackoverflow.com/questions/63455286/is-it-possible-to-use-an-icon-as-a-rotater-in-react-konva-transformer
+                // disaable fill
+                // rot.fill(null);
+                // enable icon
+                // rot.fillPatternImage(iconCanvas);
+
+                rot.position({
+                    x: textNode.width() + textNode.padding() + 10,
+                    y: -10
+                })
+            // };
+            // tr.update();
+
         }
     }, [isSelected]);
 
@@ -27,8 +52,9 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                 {...shapeProps}
                 draggable
                 onMouseDown={onSelect}
+                onMouseEnter={() => stage.container().style.cursor = "move"}
+                onMouseLeave={() => stage.container().style.cursor = "default"}
                 onDragEnd={e => {
-                    console.log(e.target)
                     onChange({
                         ...shapeProps,
                         x: e.target.x(),
@@ -65,12 +91,8 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                     });
                 }}
                 onDblclick={() => {
+                    const tr = trRef.current;
                     // hide text node and transformer:
-                    stage = stageNode.current;
-                    layer = layerNode.current;
-                    textNode = shapeRef.current;
-                    tr = trRef.current;
-
                     textNode.hide();
                     tr.hide();
                     layer.draw();
@@ -80,10 +102,8 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                     // 如何找到它？
                     // 首先，让我们找到文本节点相对于后台文件的位置：
                     let textPosition = textNode.absolutePosition();
-
                     // 然后让我们在页面上找到后台容器的位置
                     let stageBox = stage.container().getBoundingClientRect();
-
                     // 所以textarea的位置将是以上位置的总和:
                     let areaPosition = {
                         x: stageBox.left + textPosition.x,
@@ -91,52 +111,13 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                     };
 
                     // 创建 textarea 并设置样式
-                    let textarea = document.createElement('textarea');
-                    document.body.appendChild(textarea);
+                    let textarea = generateTextarea(textNode);
 
                     // 应用多种样式以尽可能接近画布上的文本
                     // 请记住，画布上的文本呈现和文本区域上的文本呈现可能不同
                     // 有时很难做到100%相同。但我们会努力。。。
-                    textarea.value = textNode.text();
-                    textarea.style.position = 'absolute';
                     textarea.style.top = areaPosition.y + 'px';
                     textarea.style.left = areaPosition.x + 'px';
-                    textarea.style.width = textNode.width() - textNode.padding() * 2 + 'px';
-                    textarea.style.height = textNode.height() - textNode.padding() * 2 + 5 + 'px';
-                    textarea.style.fontSize = textNode.fontSize() + 'px';
-                    textarea.style.border = 'none';
-                    textarea.style.padding = '0px';
-                    textarea.style.margin = '0px';
-                    textarea.style.overflow = 'hidden';
-                    textarea.style.background = 'none';
-                    textarea.style.outline = 'none';
-                    textarea.style.resize = 'none';
-                    textarea.style.lineHeight = textNode.lineHeight();
-                    textarea.style.fontFamily = textNode.fontFamily();
-                    textarea.style.transformOrigin = 'left top';
-                    textarea.style.textAlign = textNode.align();
-                    textarea.style.color = textNode.fill();
-                    let rotation = textNode.rotation();
-                    let transform = '';
-                    if (rotation) {
-                    transform += 'rotateZ(' + rotation + 'deg)';
-                    }
-
-                    let px = 0;
-                    // also we need to slightly move textarea on firefox
-                    // because it jumps a bit
-                    let isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-                    if (isFirefox) {
-                    px += 2 + Math.round(textNode.fontSize() / 20);
-                    }
-                    transform += 'translateY(-' + px + 'px)';
-
-                    textarea.style.transform = transform;
-
-                    // reset height
-                    textarea.style.height = 'auto';
-                    // after browsers resized it we can set actual value
-                    textarea.style.height = textarea.scrollHeight + 3 + 'px';
 
                     textarea.focus();
 
@@ -150,32 +131,7 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                         layer.draw();
                     }
 
-                    function setTextareaWidth(newWidth) {
-                    if (!newWidth) {
-                        // set width for placeholder
-                        newWidth = textNode.placeholder.length * textNode.fontSize();
-                    }
-                    // some extra fixes on different browsers
-                    let isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                    let isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-                    if (isSafari || isFirefox) {
-                        newWidth = Math.ceil(newWidth);
-                    }
-
-                    let isEdge = document.documentMode || /Edge/.test(navigator.userAgent);
-                    if (isEdge) {
-                        newWidth += 1;
-                    }
-                    textarea.style.width = newWidth + 'px';
-                    }
-
                     textarea.addEventListener('keydown', e => {
-                        // hide on enter
-                        // but don't hide on shift + enter
-                        // if (e.keyCode === 13 && !e.shiftKey) {
-                        //     textNode.text(textarea.value);
-                        //     removeTextarea();
-                        // }
                         // on esc do not set value back to node
                         if (e.keyCode === 27) {
                             removeTextarea();
@@ -183,8 +139,6 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                     });
 
                     textarea.addEventListener('keydown', e => {
-                        let scale = textNode.getAbsoluteScale().x;
-                        setTextareaWidth(textNode.width() * scale);
                         textarea.style.height = 'auto';
                         textarea.style.height = textarea.scrollHeight + textNode.fontSize() + 'px';
                     });
@@ -201,17 +155,34 @@ function Textangle({ shapeProps, stageNode, layerNode, isSelected, onSelect, onC
                 }}
             />
             {isSelected && (
-                <Transformer
-                    ref={trRef}
-                    {...textTransformerOptions}
-                    boundBoxFunc={(oldBox, newBox) => {
-                        // limit resize
-                        if (newBox.width < 5 || newBox.height < 5) {
-                            return oldBox;
-                        }
-                        return newBox;
-                    }}
-                />
+                <React.Fragment>
+                    <Transformer
+                        ref={trRef}
+                        {...textTransformerOptions}
+                        boundBoxFunc={(oldBox, newBox) => {
+                            // let tr = trRef.current;
+                            // tr.update();
+
+                            // limit resize
+                            if (newBox.width < 10 || newBox.height < 10) {
+                                return oldBox;
+                            }
+                            return newBox;
+                        }}
+                    >
+                        {/* see: https://github.com/konvajs/konva/issues/506 */}
+                        <Circle
+                            ref={ciRef}
+                            x={-8}
+                            y={-8}
+                            radius={7}
+                            fill="red"
+                            onMouseEnter={() => stage.container().style.cursor = "pointer"}
+                            onMouseLeave={() => stage.container().style.cursor = "default"}
+                            onClick={deleteItem}
+                        ></Circle>
+                    </Transformer>
+                </React.Fragment>
             )}
         </React.Fragment>
     )

@@ -1,16 +1,18 @@
 import React from 'react';
 import { Stage, Layer } from 'react-konva';
+import { v4 as uuidv4 } from 'uuid';
 import Textangle from './components/Textangle';
 
 function generateText() {
-    return [...Array(5)].map((_, i) => ({
-        id: i.toString(),
+    return [...Array(10)].map((_, i) => ({
+        id: uuidv4(),
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
         // width: 150,
         // height: 150,
-        rotation: Math.random() * 180,
-        text: '你好啊',
+        // rotation: Math.random() * 180,
+        rotation: 0,
+        text: '你好啊' + i,
         fill: 'red',
         fontSize: 50,
         dataType: 'template-text'
@@ -45,7 +47,7 @@ function App() {
             <Layer ref={layerRef}>
                 {textList.map((item, index) => (
                     <Textangle
-                        key={index}
+                        key={item.id}
                         stageNode={stageRef}
                         layerNode={layerRef}
                         shapeProps={item}
@@ -54,6 +56,11 @@ function App() {
                         onChange={newAttrs => {
                             const texts = textList.slice();
                             texts[index] = newAttrs;
+                            setTextList(texts);
+                        }}
+                        deleteItem={() => {
+                            const texts = textList.slice();
+                            texts.splice(index, 1);
                             setTextList(texts);
                         }}
                     ></Textangle>
